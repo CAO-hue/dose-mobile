@@ -263,32 +263,57 @@ function drawChart(){
     }
     ctx.setTransform(dpr,0,0,dpr,0,0);
     ctx.clearRect(0,0,w,h);
+
+    var padL = 40, padR = 6, padT = 6, padB = 8;
+    var plotW = w - padL - padR, plotH = h - padT - padB;
+    function axisY(v){ return padT + (1 - v) * plotH; } // v: 0=底,1=顶
+
+    ctx.font = "10px sans-serif";
     ctx.strokeStyle = "rgba(139,152,165,0.18)"; ctx.lineWidth = 1;
-    for(var gi=1; gi<4; gi++){ var gy = Math.round(h*gi/4)+0.5; ctx.beginPath(); ctx.moveTo(0,gy); ctx.lineTo(w,gy); ctx.stroke(); }
+
     if(!hist.length){
-      ctx.fillStyle = "#8b98a5"; ctx.font = "13px sans-serif"; ctx.textAlign = "center";
-      ctx.fillText("等待数据…（连接仪器或点“演示模式”）", w/2, h/2);
+      for(var gi=0; gi<=4; gi++){
+        var yy0 = padT + (gi/4)*plotH;
+        ctx.beginPath(); ctx.moveTo(padL, yy0); ctx.lineTo(w-padR, yy0); ctx.stroke();
+      }
+      ctx.fillStyle = "#8b98a5"; ctx.textAlign = "center";
+      ctx.fillText("等待数据…（连接仪器或点“演示模式”）", padL + plotW/2, h/2);
       ctx.textAlign = "left";
       return;
     }
+
     var max = 10, i;
     for(i=0;i<hist.length;i++){ if(hist[i].cps > max) max = hist[i].cps; }
     max = Math.ceil(max * 1.1);
-    var pad = 6;
+
+    // 横网格线 + 纵坐标刻度
+    ctx.textAlign = "right"; ctx.fillStyle = "#8b98a5";
+    for(var k=0; k<=4; k++){
+      var val = max * (1 - k/4);
+      var yy = padT + (k/4)*plotH;
+      ctx.beginPath(); ctx.moveTo(padL, yy); ctx.lineTo(w-padR, yy); ctx.stroke();
+      ctx.fillText(Math.round(val) + "", padL - 5, yy + 3);
+    }
+    ctx.textAlign = "left";
+    ctx.fillText("CPS", 6, 12);
+
+    // 曲线 + 末点
     ctx.strokeStyle = "#58a6ff"; ctx.lineWidth = 2; ctx.lineJoin = "round"; ctx.lineCap = "round";
     ctx.beginPath();
     for(i=0;i<hist.length;i++){
-      var x = pad + (i/(HISTORY_N-1)) * (w - pad*2);
-      var y = h - pad - (hist[i].cps / max) * (h - pad*2);
+      var x = padL + (i/(HISTORY_N-1)) * plotW;
+      var y = axisY(hist[i].cps / max);
       if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
     }
     ctx.stroke();
-    var lx = pad + ((hist.length-1)/(HISTORY_N-1)) * (w - pad*2);
-    var ly = h - pad - (hist[hist.length-1].cps / max) * (h - pad*2);
+    var lx = padL + ((hist.length-1)/(HISTORY_N-1)) * plotW;
+    var ly = axisY(hist[hist.length-1].cps / max);
     ctx.fillStyle = "#58a6ff";
     ctx.beginPath(); ctx.arc(lx, ly, 3, 0, Math.PI*2); ctx.fill();
-    ctx.fillStyle = "#8b98a5"; ctx.font = "10px sans-serif";
-    ctx.fillText("max " + max + " CPS · 点数 " + hist.length, 6, 12);
+    ctx.fillStyle = "#8b98a5";
+    ctx.textAlign = "right";
+    ctx.fillText("点数 " + hist.length, w - padR, 12);
+    ctx.textAlign = "left";
   }catch(e){
     err("图表绘制错误: " + (e && e.message ? e.message : e));
   }
