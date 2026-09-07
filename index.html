@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0b0f14">
+<title>辐射剂量监测</title>
+<style>
+  :root{
+    --bg:#0b0f14; --card:#141b24; --line:#233040; --txt:#e6edf3; --dim:#8b98a5;
+    --ok:#2ea043; --warn:#d29922; --bad:#f85149; --acc:#58a6ff;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{margin:0; padding:0;}
+  body{background:var(--bg); color:var(--txt);
+    font-family:-apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",Roboto,sans-serif;
+    min-height:100vh;}
+  .wrap{max-width:560px; margin:0 auto; padding:14px 14px calc(24px + env(safe-area-inset-bottom));}
+  header{display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:12px;}
+  header h1{font-size:17px; margin:0; font-weight:600;}
+  .dev{font-size:12px; color:var(--dim); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .dot{display:inline-block; width:9px; height:9px; border-radius:50%; background:#555; margin-right:6px; vertical-align:1px;}
+  .dot.on{background:var(--ok); box-shadow:0 0 8px var(--ok);}
+  .dot.demo{background:var(--warn); box-shadow:0 0 8px var(--warn);}
+  .dot.err{background:var(--bad); box-shadow:0 0 8px var(--bad);}
+  .card{background:var(--card); border:1px solid var(--line); border-radius:14px; padding:14px; margin-bottom:12px;}
+  .rate{text-align:center; padding:18px 14px 14px;}
+  .rate .label{font-size:13px; color:var(--dim); letter-spacing:2px;}
+  .rate .big{font-size:64px; font-weight:700; line-height:1.1; font-variant-numeric:tabular-nums; margin:6px 0 2px;}
+  .rate .big small{font-size:20px; font-weight:500; color:var(--dim); margin-left:6px;}
+  .rate .note{font-size:11px; color:var(--dim); min-height:14px;}
+  .rate.alarm .big{color:var(--bad);}
+  .rate.ok .big{color:var(--ok);}
+  .stats{display:grid; grid-template-columns:repeat(3,1fr); gap:8px;}
+  .stat{background:var(--card); border:1px solid var(--line); border-radius:12px; padding:10px 8px; text-align:center;}
+  .stat .v{font-size:20px; font-weight:600; font-variant-numeric:tabular-nums;}
+  .stat .k{font-size:11px; color:var(--dim); margin-top:3px;}
+  .banner{border-radius:12px; padding:10px 12px; font-size:14px; font-weight:600; text-align:center;}
+  .banner.ok{background:rgba(46,160,67,.12); color:var(--ok); border:1px solid rgba(46,160,67,.4);}
+  .banner.bad{background:rgba(248,81,73,.14); color:var(--bad); border:1px solid rgba(248,81,73,.5); animation:pulse 1s infinite;}
+  @keyframes pulse{50%{opacity:.55;}}
+  h2{font-size:12px; color:var(--dim); font-weight:500; margin:0 0 8px 2px; letter-spacing:1px;}
+  canvas{width:100%; height:170px; display:block;}
+  .btnrow{display:flex; gap:8px; flex-wrap:wrap;}
+  button{flex:1 1 auto; min-height:46px; border-radius:12px; border:1px solid var(--line);
+    background:var(--card); color:var(--txt); font-size:15px; padding:0 14px; cursor:pointer;}
+  button.primary{background:var(--acc); border-color:var(--acc); color:#04101d; font-weight:600;}
+  button:disabled{opacity:.45; cursor:not-allowed;}
+  button.danger{color:#f85149; border-color:rgba(248,81,73,.4);}
+  #log{min-height:18px; font-size:12px; color:var(--dim); margin-top:12px; word-break:break-all; white-space:pre-wrap;}
+  footer{font-size:11px; color:var(--dim); text-align:center; margin-top:16px; line-height:1.6;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>☢️ 辐射剂量监测</h1>
+    <div class="dev"><span class="dot" id="dot"></span><span id="devName">未连接</span></div>
+  </header>
+
+  <div class="card rate" id="rateCard">
+    <div class="label">剂量率</div>
+    <div class="big"><span id="rateVal">--</span><small id="rateUnit">µSv/h</small></div>
+    <div class="note" id="rateNote"></div>
+  </div>
+
+  <div class="stats">
+    <div class="stat"><div class="v" id="cpsVal">--</div><div class="k">计数率 CPS</div></div>
+    <div class="stat"><div class="v" id="accVal">--</div><div class="k">累计剂量 µSv</div></div>
+    <div class="stat"><div class="v" id="thrVal">--</div><div class="k">报警阈值 µSv/h</div></div>
+  </div>
+
+  <div style="margin-top:10px;" id="alarmBox"><div class="banner ok" id="alarmTxt">状态未知</div></div>
+
+  <div class="card">
+    <h2>计数率趋势（最近 3 分钟）</h2>
+    <canvas id="chart"></canvas>
+  </div>
+
+  <div class="btnrow">
+    <button id="btnConnect" class="primary">连接仪器</button>
+    <button id="btnDisconnect" class="danger" disabled>断开</button>
+    <button id="btnDemo">演示模式</button>
+  </div>
+
+  <div id="log"></div>
+  <footer>需安卓 Chrome/Edge + HTTPS 才能连蓝牙；数据经蓝牙直连本机，不上传云端。</footer>
+</div>
+
+<script>
+"use strict";
+/* ===== 配置：换用非 NUS 模块时只改这里 ===== */
+var NUS_SERVICE_UUID = "6e400001-b5a3-f393-e0a9-e50e24dcca9e"; // Nordic UART Service
+var NUS_NOTIFY_UUID  = "6e400003-b5a3-f393-e0a9-e50e24dcca9e"; // 设备 -> 手机 (Notify)
+var RATE_UNIT   = "µSv/h";
+var CALIBRATED  = false;   // 剂量率未做标定：显示“仅供参考”提示
+var NAME_PREFIX = "";      // 可选设备名前缀过滤，如 "DOSE"；留空 = 列出附近所有 BLE 设备
+var HISTORY_N   = 180;     // 趋势点数（每秒 1 点 = 3 分钟）
+
+/* ===== 状态 ===== */
+var device = null, notifyChar = null, rxBuf = "", rxText = "", connected = false, connecting = false;
+var demo = false, demoTimer = null;
+var hist = [];             // {t, cps}
+var last = null;           // {cps, rate, acc, thr, alarm}
+
+function $(id){ return document.getElementById(id); }
+var el = {
+  rate:$("rateVal"), cps:$("cpsVal"), acc:$("accVal"), thr:$("thrVal"),
+  alarm:$("alarmBox"), dot:$("dot"), dev:$("devName"), log:$("log"),
+  chart:$("chart"), rateCard:$("rateCard"),
+  btnC:$("btnConnect"), btnD:$("btnDisconnect"), btnDemo:$("btnDemo")
+};
+
+function log(msg){ el.log.textContent = msg; }
+
+/* ===== 蓝牙连接 ===== */
+el.btnC.addEventListener("click", async function(){
+  if(connecting) return;
+  if(!("bluetooth" in navigator)){
+    log("此浏览器不支持 Web Bluetooth。\n请用安卓 Chrome/Edge，并通过 HTTPS（或 localhost）打开本页。");
+    return;
+  }
+  connecting = true;
+  el.btnC.disabled = true;
+  log("正在搜索仪器…请在系统弹窗中选择设备");
+  try{
+    var opts = { optionalServices:[NUS_SERVICE_UUID] };
+    if(NAME_PREFIX){ opts.filters = [{ namePrefix: NAME_PREFIX }]; }
+    else { opts.acceptAllDevices = true; }
+    var d = await navigator.bluetooth.requestDevice(opts);
+    device = d;
+    d.addEventListener("gattserverdisconnected", onLost);
+    log("正在连接 " + (d.name || d.id) + " …");
+    var server = await d.gatt.connect();
+    var svc = await server.getPrimaryService(NUS_SERVICE_UUID);
+    notifyChar = await svc.getCharacteristic(NUS_NOTIFY_UUID);
+    await notifyChar.startNotifications();
+    notifyChar.addEventListener("characteristicvaluechanged", onData);
+    connected = true;
+    el.dev.textContent = d.name || "已连接";
+    setDot("on");
+    el.btnD.disabled = false;
+    log("已连接：" + (d.name || d.id) + "，等待数据…\n若长时间无数据，请确认固件每秒发送一行 JSON。");
+  }catch(e){
+    connected = false;
+    if(e && e.name === "NotFoundError"){
+      log("未找到 NUS 服务。\n请确认蓝牙模块透传固件为 NUS，或修改页面顶部 UUID 常量。");
+    }else if(e && e.name === "SecurityError"){
+      log("需要 HTTPS 或 localhost 环境才能使用蓝牙。");
+    }else{
+      log("连接失败或已取消：\n" + (e && e.message ? e.message : e));
+    }
+    setDot("err");
+    el.dev.textContent = "未连接";
+  }finally{
+    connecting = false;
+    el.btnC.disabled = demo || connected;
+  }
+});
+
+function setDot(cls){ el.dot.className = "dot" + (cls ? " " + cls : ""); }
+
+function onLost(){
+  connected = false;
+  el.dev.textContent = "连接已断开";
+  setDot("err");
+  el.btnD.disabled = true;
+  el.btnC.disabled = demo;
+  el.rateCard.className = "card rate";
+  log("蓝牙已断开，可重新点击“连接仪器”。");
+}
+
+el.btnD.addEventListener("click", function(){
+  if(device && device.gatt && device.gatt.connected){ device.gatt.disconnect(); }
+  onLost();
+});
+
+/* ===== 数据接收：按 \n 重组整行再解析 ===== */
+var decoder = new TextDecoder("utf-8");
+function onData(ev){
+  var v = ev.target.value;
+  var bytes = new Uint8Array(v.buffer, v.byteOffset, v.byteLength);
+  rxText += decoder.decode(bytes, {stream:true});
+  var idx;
+  while((idx = rxText.indexOf("\n")) >= 0){
+    var line = rxText.slice(0, idx).trim();
+    rxText = rxText.slice(idx + 1);
+    if(!line) continue;
+    var obj = null;
+    try{ obj = JSON.parse(line); }catch(_){ continue; } // 坏行跳过
+    if(obj && (typeof obj.cps === "number" || typeof obj.rate === "number")){ apply(obj); }
+  }
+}
+
+function apply(o){
+  var now = Date.now();
+  if(typeof o.cps === "number"){
+    hist.push({t:now, cps:o.cps});
+    if(hist.length > HISTORY_N){ hist.shift(); }
+  }
+  var rate = (typeof o.rate === "number") ? o.rate : null;
+  var alarm = (typeof o.alarm === "number") ? !!o.alarm
+            : (rate !== null && typeof o.thr === "number" && rate >= o.thr);
+  last = { cps:o.cps, rate:rate, acc:o.acc, thr:o.thr, alarm:alarm };
+  render();
+}
+
+/* ===== 渲染 ===== */
+function fmt(v, digits){
+  if(v === null || v === undefined || isNaN(v)) return "--";
+  return Number(v).toFixed(digits);
+}
+function render(){
+  if(!last) return;
+  el.cps.textContent = fmt(last.cps, 0);
+  el.rate.textContent = fmt(last.rate, last.rate !== null && last.rate < 1 ? 3 : 2);
+  el.acc.textContent = fmt(last.acc, 2);
+  el.thr.textContent = fmt(last.thr, 2);
+  el.rateNote.textContent = CALIBRATED ? "" : "（数值未标定，仅供参考）";
+  if(last.alarm){
+    el.alarm.innerHTML = '<div class="banner bad">🚨 超阈值报警</div>';
+    el.rateCard.className = "card rate alarm";
+  }else{
+    el.alarm.innerHTML = '<div class="banner ok">正常</div>';
+    el.rateCard.className = "card rate ok";
+  }
+  drawChart();
+}
+
+/* ===== 趋势图（canvas 自绘，无依赖） ===== */
+function drawChart(){
+  var cv = el.chart, ctx = cv.getContext("2d");
+  var dpr = window.devicePixelRatio || 1;
+  var w = cv.clientWidth || cv.parentNode.clientWidth, h = cv.clientHeight || 170;
+  if(cv.width !== Math.round(w*dpr)){ cv.width = Math.round(w*dpr); cv.height = Math.round(h*dpr); }
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.clearRect(0,0,w,h);
+  if(!hist.length) return;
+  var max = 10, i;
+  for(i=0;i<hist.length;i++){ if(hist[i].cps > max) max = hist[i].cps; }
+  max = Math.ceil(max * 1.1);
+  var pad = 4;
+  ctx.strokeStyle = "#58a6ff"; ctx.lineWidth = 1.6; ctx.lineJoin = "round";
+  ctx.beginPath();
+  for(i=0;i<hist.length;i++){
+    var x = pad + (i/(HISTORY_N-1)) * (w - pad*2);
+    var y = h - pad - (hist[i].cps / max) * (h - pad*2);
+    if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+  }
+  ctx.stroke();
+  ctx.fillStyle = "#8b98a5"; ctx.font = "10px sans-serif";
+  ctx.fillText("max " + max + " CPS", 6, 12);
+}
+
+window.addEventListener("resize", drawChart);
+
+/* ===== 演示模式：无硬件时预览界面 ===== */
+el.btnDemo.addEventListener("click", function(){
+  if(demo){ stopDemo(); return; }
+  if(connected && device && device.gatt && device.gatt.connected){ device.gatt.disconnect(); onLost(); }
+  demo = true;
+  el.btnDemo.textContent = "停止演示";
+  el.btnC.disabled = true; el.btnD.disabled = true;
+  el.dev.textContent = "演示数据";
+  setDot("demo");
+  var cps = 120, acc = 0.35, thr = 0.5, t0 = Date.now();
+  demoTimer = setInterval(function(){
+    cps = Math.max(5, Math.round(cps + (Math.random()-0.5)*40 + (Math.random()<0.02 ? 150 : 0)));
+    var rate = cps * 0.0018 + Math.random()*0.02; // 模拟未标定换算
+    acc += rate / 3600;
+    apply({ cps:cps, rate:rate, acc:acc, thr:thr, alarm:rate >= thr });
+    if(Date.now() - t0 > 60000){ acc = 0.35; t0 = Date.now(); } // 演示用，累计剂量每分钟归零
+  }, 1000);
+  log("演示模式：正在模拟每秒一条数据。");
+});
+
+function stopDemo(){
+  demo = false;
+  clearInterval(demoTimer);
+  el.btnDemo.textContent = "演示模式";
+  el.btnC.disabled = false;
+  el.dev.textContent = "未连接";
+  setDot("");
+  log("演示已停止。");
+}
+</script>
+</body>
+</html>
