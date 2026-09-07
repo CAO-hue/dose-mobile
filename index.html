@@ -106,6 +106,7 @@ var last = null;           // {cps, rate, acc, thr, alarm}
 function $(id){ return document.getElementById(id); }
 var el = {
   rate:$("rateVal"), cps:$("cpsVal"), acc:$("accVal"), thr:$("thrVal"),
+  rateNote:$("rateNote"),
   alarm:$("alarmBox"), dot:$("dot"), dev:$("devName"), log:$("log"),
   chart:$("chart"), rateCard:$("rateCard"),
   btnC:$("btnConnect"), btnD:$("btnDisconnect"), btnDemo:$("btnDemo")
@@ -138,6 +139,7 @@ el.btnC.addEventListener("click", async function(){
     await notifyChar.startNotifications();
     notifyChar.addEventListener("characteristicvaluechanged", onData);
     connected = true;
+    hist = [];
     el.dev.textContent = d.name || "已连接";
     setDot("on");
     el.btnD.disabled = false;
@@ -286,14 +288,14 @@ el.btnDemo.addEventListener("click", function(){
   el.btnC.disabled = true; el.btnD.disabled = true;
   el.dev.textContent = "演示数据";
   setDot("demo");
-  var cps = 120, acc = 0.35, thr = 0.5, t0 = Date.now();
+  hist = [];
+  var cps = 120, acc = 0, thr = 0.5;
   demoTimer = setInterval(function(){
     try{
       cps = Math.max(5, Math.round(cps + (Math.random()-0.5)*40 + (Math.random()<0.02 ? 150 : 0)));
       var rate = cps * 0.0018 + Math.random()*0.02; // 模拟未标定换算
       acc += rate / 3600;
       apply({ cps:cps, rate:rate, acc:acc, thr:thr, alarm:rate >= thr });
-      if(Date.now() - t0 > 60000){ acc = 0.35; t0 = Date.now(); }
     }catch(e){
       err("演示运行错误: " + (e && e.message ? e.message : e));
     }
