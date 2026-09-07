@@ -235,7 +235,14 @@ function drawChart(){
   if(cv.width !== Math.round(w*dpr)){ cv.width = Math.round(w*dpr); cv.height = Math.round(h*dpr); }
   ctx.setTransform(dpr,0,0,dpr,0,0);
   ctx.clearRect(0,0,w,h);
-  if(!hist.length) return;
+  ctx.strokeStyle = "rgba(139,152,165,0.18)"; ctx.lineWidth = 1;
+  for(var gi=1; gi<4; gi++){ var gy = Math.round(h*gi/4)+0.5; ctx.beginPath(); ctx.moveTo(0,gy); ctx.lineTo(w,gy); ctx.stroke(); }
+  if(!hist.length){
+    ctx.fillStyle = "#8b98a5"; ctx.font = "13px sans-serif"; ctx.textAlign = "center";
+    ctx.fillText("等待数据…（连接仪器或点“演示模式”）", w/2, h/2);
+    ctx.textAlign = "left";
+    return;
+  }
   var max = 10, i;
   for(i=0;i<hist.length;i++){ if(hist[i].cps > max) max = hist[i].cps; }
   max = Math.ceil(max * 1.1);
@@ -283,6 +290,7 @@ function stopDemo(){
   setDot("");
   log("演示已停止。");
 }
+drawChart();
 </script>
 </body>
 </html>
