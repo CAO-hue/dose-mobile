@@ -112,6 +112,7 @@ var el = {
 };
 
 function log(msg){ el.log.textContent = msg; }
+function err(msg){ el.log.textContent = "⚠ " + msg; }
 
 /* ===== 蓝牙连接 ===== */
 el.btnC.addEventListener("click", async function(){
@@ -229,34 +230,49 @@ function render(){
 
 /* ===== 趋势图（canvas 自绘，无依赖） ===== */
 function drawChart(){
-  var cv = el.chart, ctx = cv.getContext("2d");
-  var dpr = window.devicePixelRatio || 1;
-  var w = cv.clientWidth || cv.parentNode.clientWidth, h = cv.clientHeight || 170;
-  if(cv.width !== Math.round(w*dpr)){ cv.width = Math.round(w*dpr); cv.height = Math.round(h*dpr); }
-  ctx.setTransform(dpr,0,0,dpr,0,0);
-  ctx.clearRect(0,0,w,h);
-  ctx.strokeStyle = "rgba(139,152,165,0.18)"; ctx.lineWidth = 1;
-  for(var gi=1; gi<4; gi++){ var gy = Math.round(h*gi/4)+0.5; ctx.beginPath(); ctx.moveTo(0,gy); ctx.lineTo(w,gy); ctx.stroke(); }
-  if(!hist.length){
-    ctx.fillStyle = "#8b98a5"; ctx.font = "13px sans-serif"; ctx.textAlign = "center";
-    ctx.fillText("等待数据…（连接仪器或点“演示模式”）", w/2, h/2);
-    ctx.textAlign = "left";
-    return;
+  try{
+    var cv = el.chart;
+    if(!cv){ err("图表节点不存在"); return; }
+    var ctx = cv.getContext("2d");
+    if(!ctx){ err("当前浏览器不支持 Canvas 绘图"); return; }
+    var dpr = window.devicePixelRatio || 1;
+    var w = cv.clientWidth || (cv.parentNode ? cv.parentNode.clientWidth : 0) || 300;
+    var h = cv.clientHeight || 170;
+    if(w < 4 || h < 4){ w = 300; h = 170; }
+    if(cv.width !== Math.round(w*dpr) || cv.height !== Math.round(h*dpr)){
+      cv.width = Math.round(w*dpr); cv.height = Math.round(h*dpr);
+    }
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+    ctx.clearRect(0,0,w,h);
+    ctx.strokeStyle = "rgba(139,152,165,0.18)"; ctx.lineWidth = 1;
+    for(var gi=1; gi<4; gi++){ var gy = Math.round(h*gi/4)+0.5; ctx.beginPath(); ctx.moveTo(0,gy); ctx.lineTo(w,gy); ctx.stroke(); }
+    if(!hist.length){
+      ctx.fillStyle = "#8b98a5"; ctx.font = "13px sans-serif"; ctx.textAlign = "center";
+      ctx.fillText("等待数据…（连接仪器或点“演示模式”）", w/2, h/2);
+      ctx.textAlign = "left";
+      return;
+    }
+    var max = 10, i;
+    for(i=0;i<hist.length;i++){ if(hist[i].cps > max) max = hist[i].cps; }
+    max = Math.ceil(max * 1.1);
+    var pad = 6;
+    ctx.strokeStyle = "#58a6ff"; ctx.lineWidth = 2; ctx.lineJoin = "round"; ctx.lineCap = "round";
+    ctx.beginPath();
+    for(i=0;i<hist.length;i++){
+      var x = pad + (i/(HISTORY_N-1)) * (w - pad*2);
+      var y = h - pad - (hist[i].cps / max) * (h - pad*2);
+      if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+    }
+    ctx.stroke();
+    var lx = pad + ((hist.length-1)/(HISTORY_N-1)) * (w - pad*2);
+    var ly = h - pad - (hist[hist.length-1].cps / max) * (h - pad*2);
+    ctx.fillStyle = "#58a6ff";
+    ctx.beginPath(); ctx.arc(lx, ly, 3, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = "#8b98a5"; ctx.font = "10px sans-serif";
+    ctx.fillText("max " + max + " CPS · 点数 " + hist.length, 6, 12);
+  }catch(e){
+    err("图表绘制错误: " + (e && e.message ? e.message : e));
   }
-  var max = 10, i;
-  for(i=0;i<hist.length;i++){ if(hist[i].cps > max) max = hist[i].cps; }
-  max = Math.ceil(max * 1.1);
-  var pad = 4;
-  ctx.strokeStyle = "#58a6ff"; ctx.lineWidth = 1.6; ctx.lineJoin = "round";
-  ctx.beginPath();
-  for(i=0;i<hist.length;i++){
-    var x = pad + (i/(HISTORY_N-1)) * (w - pad*2);
-    var y = h - pad - (hist[i].cps / max) * (h - pad*2);
-    if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
-  }
-  ctx.stroke();
-  ctx.fillStyle = "#8b98a5"; ctx.font = "10px sans-serif";
-  ctx.fillText("max " + max + " CPS", 6, 12);
 }
 
 window.addEventListener("resize", drawChart);
@@ -272,11 +288,15 @@ el.btnDemo.addEventListener("click", function(){
   setDot("demo");
   var cps = 120, acc = 0.35, thr = 0.5, t0 = Date.now();
   demoTimer = setInterval(function(){
-    cps = Math.max(5, Math.round(cps + (Math.random()-0.5)*40 + (Math.random()<0.02 ? 150 : 0)));
-    var rate = cps * 0.0018 + Math.random()*0.02; // 模拟未标定换算
-    acc += rate / 3600;
-    apply({ cps:cps, rate:rate, acc:acc, thr:thr, alarm:rate >= thr });
-    if(Date.now() - t0 > 60000){ acc = 0.35; t0 = Date.now(); } // 演示用，累计剂量每分钟归零
+    try{
+      cps = Math.max(5, Math.round(cps + (Math.random()-0.5)*40 + (Math.random()<0.02 ? 150 : 0)));
+      var rate = cps * 0.0018 + Math.random()*0.02; // 模拟未标定换算
+      acc += rate / 3600;
+      apply({ cps:cps, rate:rate, acc:acc, thr:thr, alarm:rate >= thr });
+      if(Date.now() - t0 > 60000){ acc = 0.35; t0 = Date.now(); }
+    }catch(e){
+      err("演示运行错误: " + (e && e.message ? e.message : e));
+    }
   }, 1000);
   log("演示模式：正在模拟每秒一条数据。");
 });
