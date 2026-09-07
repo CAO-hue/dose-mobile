@@ -49,6 +49,13 @@
   button.danger{color:#f85149; border-color:rgba(248,81,73,.4);}
   #log{min-height:18px; font-size:12px; color:var(--dim); margin-top:12px; word-break:break-all; white-space:pre-wrap;}
   footer{font-size:11px; color:var(--dim); text-align:center; margin-top:16px; line-height:1.6;}
+
+  body.alarm{ animation: alarmBg .55s ease-in-out infinite alternate; }
+  @keyframes alarmBg{ from{ background:#0b0f14; } to{ background:#521317; } }
+  .rate.alarm .big{ color:#ff6b6b; text-shadow:0 0 20px rgba(248,81,73,.9); animation:numFlash 1s infinite; }
+  @keyframes numFlash{ 0%,100%{ opacity:1; } 50%{ opacity:.3; } }
+  .banner.bad{ font-size:17px; letter-spacing:2px; padding:14px 12px;
+    background:rgba(248,81,73,.22); color:#ffc9c6; border-color:#f85149; text-shadow:0 0 8px rgba(248,81,73,.6); }
 </style>
 </head>
 <body>
@@ -101,6 +108,7 @@ var HISTORY_N   = 180;     // 趋势点数（每秒 1 点 = 3 分钟）
 var device = null, notifyChar = null, rxBuf = "", rxText = "", connected = false, connecting = false;
 var demo = false, demoTimer = null;
 var hist = [];             // {t, cps}
+var lastVib = 0;
 var last = null;           // {cps, rate, acc, thr, alarm}
 
 function $(id){ return document.getElementById(id); }
@@ -114,6 +122,13 @@ var el = {
 
 function log(msg){ el.log.textContent = msg; }
 function err(msg){ el.log.textContent = "⚠ " + msg; }
+function buzz(){
+  try{
+    if(!navigator.vibrate) return;
+    var now = Date.now();
+    if(now - lastVib > 1500){ lastVib = now; navigator.vibrate([200,100,200]); }
+  }catch(_){}
+}
 
 /* ===== 蓝牙连接 ===== */
 el.btnC.addEventListener("click", async function(){
@@ -220,10 +235,14 @@ function render(){
   el.acc.textContent = fmt(last.acc, 2);
   el.thr.textContent = fmt(last.thr, 2);
   el.rateNote.textContent = CALIBRATED ? "" : "（数值未标定，仅供参考）";
-  if(last.alarm){
-    el.alarm.innerHTML = '<div class="banner bad">🚨 超阈值报警</div>';
+  var alarming = !!last.alarm;
+  if(alarming){
+    document.body.classList.add("alarm");
+    el.alarm.innerHTML = '<div class="banner bad">⚠ 剂量率超阈值报警 ⚠</div>';
     el.rateCard.className = "card rate alarm";
+    buzz();
   }else{
+    document.body.classList.remove("alarm");
     el.alarm.innerHTML = '<div class="banner ok">正常</div>';
     el.rateCard.className = "card rate ok";
   }
