@@ -23,7 +23,8 @@ STM32 空闲USART1 ──▶ BLE 透传模块(NUS) ──无线──▶ 安卓 
   - 仓库：https://github.com/CAO-hue/dose-mobile
   - 网页：https://cao-hue.github.io/dose-mobile/
 - [x] 数据协议文档（`protocol.md`，网页已按其实现）
-- [ ] STM32 固件输出示例 + BLE 接线说明（**未做**，下一步）
+- [x] STM32 固件上报示例（`firmware/stm32_uart_report.c`）
+- [x] 外挂 BLE 接线与配置说明（`hardware_ble_wiring.md`，依据实际原理图）
 
 ## 四、网页数据协议（与未来固件约定）
 - GATT：NUS（Nordic UART Service）
@@ -38,6 +39,8 @@ STM32 空闲USART1 ──▶ BLE 透传模块(NUS) ──无线──▶ 安卓 
 - `D:\工程文件\dose-mobile\index.html` —— 网页（git 仓库，remote: GitHub）
 - `D:\工程文件\dose-mobile\README.md` —— 项目进度说明
 - `D:\工程文件\dose-mobile\protocol.md` —— 数据协议文档（固件↔网页约定）
+- `D:\工程文件\dose-mobile\hardware_ble_wiring.md` —— 外挂 BLE 接线/配置说明
+- `D:\工程文件\dose-mobileirmware\stm32_uart_report.c` —— STM32 每秒上报示例
 - `D:\工程文件\work\` —— 过程文件（论文提取文本 paper_text.txt、gh 工具与登录配置 gh-config、调试脚本等，非交付物）
 
 ## 六、如何更新网页
@@ -51,10 +54,9 @@ git push origin main
 （推送凭据：本机 gh 已授权，配置在 `D:\工程文件\work\gh-config`；网络受限时可用本机代理 127.0.0.1:7890，或直连。）
 
 ## 七、待办（按已确认计划）
-1. STM32 固件输出示例（Keil5/标准库，USART1 每秒上报，协议见 protocol.md）
-2. BLE 模块选型/接线说明（外挂样机：nRF52832 NUS 透传，模块到手后接）
-3. 真机端到端联调（网页已支持）
-4. 硬件小型化（下一版 PCB 集成，后续阶段）
+1. 模块到手：按 `hardware_ble_wiring.md` 接线，把 `firmware/stm32_uart_report.c` 合入 Keil 工程（映射实际变量）
+2. 真机端到端联调（网页已支持）
+3. 硬件小型化（下一版 PCB 集成，后续阶段）
 
 ## 八、安全提醒
 GitHub 登录密码曾在对话中出现，已视为泄露，**请尽快改密并开启两步验证**。当前部署用的是设备码授权（gh），密码未被使用。
