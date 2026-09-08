@@ -25,6 +25,7 @@ STM32 空闲USART1 ──▶ BLE 透传模块(NUS) ──无线──▶ 安卓 
 - [x] 数据协议文档（`protocol.md`，网页已按其实现）
 - [x] STM32 固件上报示例（`firmware/stm32_uart_report.c`）
 - [x] 外挂 BLE 接线与配置说明（`hardware_ble_wiring.md`，依据实际原理图）
+- [x] **整机完整固件 v1**（`firmware/keil_dose_app/`：计数/剂量/OLED/按键/报警/BLE 上报 + 建工程说明；待你在 Keil 编译与真机验证）
 
 ## 四、网页数据协议（与未来固件约定）
 - GATT：NUS（Nordic UART Service）
@@ -41,6 +42,7 @@ STM32 空闲USART1 ──▶ BLE 透传模块(NUS) ──无线──▶ 安卓 
 - `D:\工程文件\dose-mobile\protocol.md` —— 数据协议文档（固件↔网页约定）
 - `D:\工程文件\dose-mobile\hardware_ble_wiring.md` —— 外挂 BLE 接线/配置说明
 - `D:\工程文件\dose-mobileirmware\stm32_uart_report.c` —— STM32 每秒上报示例
+- `D:\工程文件\dose-mobileirmware\keil_dose_app\` —— 整机完整固件 v1（main + oled/keys/dose/alarm/ble_report + project_setup.md 建工程说明）
 - `D:\工程文件\work\` —— 过程文件（论文提取文本 paper_text.txt、gh 工具与登录配置 gh-config、调试脚本等，非交付物）
 
 ## 六、如何更新网页
@@ -54,9 +56,10 @@ git push origin main
 （推送凭据：本机 gh 已授权，配置在 `D:\工程文件\work\gh-config`；网络受限时可用本机代理 127.0.0.1:7890，或直连。）
 
 ## 七、待办（按已确认计划）
-1. 模块到手：按 `hardware_ble_wiring.md` 接线，把 `firmware/stm32_uart_report.c` 合入 Keil 工程（映射实际变量）
-2. 真机端到端联调（网页已支持）
-3. 硬件小型化（下一版 PCB 集成，后续阶段）
+1. 安装 Keil MDK5 + STM32F1 DFP + ST 标准外设库 V3.5（见 `firmware/keil_dose_app/project_setup.md`）
+2. 按 `project_setup.md` 新建工程并编译 `keil_dose_app`（0 error），ST-Link 烧录真机验证
+3. 模块到手：按 `hardware_ble_wiring.md` 接线 → 手机网页端到端联调（网页已支持）
+4. 硬件小型化（下一版 PCB 集成，后续阶段）
 
 ## 八、安全提醒
 GitHub 登录密码曾在对话中出现，已视为泄露，**请尽快改密并开启两步验证**。当前部署用的是设备码授权（gh），密码未被使用。
