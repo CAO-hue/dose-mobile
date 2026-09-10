@@ -25,6 +25,7 @@ STM32 空闲USART1 ──▶ BLE 透传模块(NUS) ──无线──▶ 安卓 
 - [x] 数据协议文档（`protocol.md`，网页已按其实现）
 - [x] STM32 固件上报示例（`firmware/stm32_uart_report.c`）
 - [x] 外挂 BLE 接线与配置说明（`hardware_ble_wiring.md`，依据实际原理图）
+- [x] 外挂 BLE 飞线接线记录（`外挂BLE接线记录.md`，主原理图不改动）
 - [x] **整机完整固件 v1**（`firmware/keil_dose_app/`：计数/剂量/OLED/按键/报警/BLE 上报 + 建工程说明；待你在 Keil 编译与真机验证）
 
 ## 四、网页数据协议（与未来固件约定）
@@ -41,6 +42,7 @@ STM32 空闲USART1 ──▶ BLE 透传模块(NUS) ──无线──▶ 安卓 
 - `D:\工程文件\dose-mobile\README.md` —— 项目进度说明
 - `D:\工程文件\dose-mobile\protocol.md` —— 数据协议文档（固件↔网页约定）
 - `D:\工程文件\dose-mobile\hardware_ble_wiring.md` —— 外挂 BLE 接线/配置说明
+- `D:\工程文件\dose-mobile\外挂BLE接线记录.md` —— 飞线样机接线记录（主原理图不改动）
 - `D:\工程文件\dose-mobileirmware\stm32_uart_report.c` —— STM32 每秒上报示例
 - `D:\工程文件\dose-mobileirmware\keil_dose_app\` —— 整机完整固件 v1（main + oled/keys/dose/alarm/ble_report + project_setup.md 建工程说明）
 - `D:\工程文件\work\` —— 过程文件（论文提取文本 paper_text.txt、gh 工具与登录配置 gh-config、调试脚本等，非交付物）
