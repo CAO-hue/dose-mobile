@@ -79,7 +79,7 @@
   <div style="margin-top:10px;" id="alarmBox"><div class="banner ok" id="alarmTxt">状态未知</div></div>
 
   <div class="card">
-    <h2>计数率趋势（最近 3 分钟）</h2>
+    <h2>计数率趋势（最近 3 分钟 · 单位 CPS）</h2>
     <canvas id="chart"></canvas>
   </div>
 
@@ -264,7 +264,7 @@ function drawChart(){
     ctx.setTransform(dpr,0,0,dpr,0,0);
     ctx.clearRect(0,0,w,h);
 
-    var padL = 40, padR = 6, padT = 6, padB = 8;
+    var padL = 46, padR = 6, padT = 6, padB = 8;
     var plotW = w - padL - padR, plotH = h - padT - padB;
     function axisY(v){ return padT + (1 - v) * plotH; } // v: 0=底,1=顶
 
@@ -295,7 +295,6 @@ function drawChart(){
       ctx.fillText(Math.round(val) + "", padL - 5, yy + 3);
     }
     ctx.textAlign = "left";
-    ctx.fillText("CPS", 6, 12);
 
     // 曲线 + 末点
     ctx.strokeStyle = "#58a6ff"; ctx.lineWidth = 2; ctx.lineJoin = "round"; ctx.lineCap = "round";
