@@ -95,8 +95,8 @@
 <script>
 "use strict";
 /* ===== 配置：换用非 NUS 模块时只改这里 ===== */
-var NUS_SERVICE_UUID = "6e400001-b5a3-f393-e0a9-e50e24dcca9e"; // Nordic UART Service
-var NUS_NOTIFY_UUID  = "6e400003-b5a3-f393-e0a9-e50e24dcca9e"; // 设备 -> 手机 (Notify)
+var NUS_SERVICE_UUID = "0000ffe0-0000-1000-8000-00805f9b34fb"; // VG6328A 服务 0xFFE0
+var NUS_NOTIFY_UUID  = "0000ffe2-0000-1000-8000-00805f9b34fb"; // VG6328A 通知 0xFFE2 (UART -> APP)
 var RATE_UNIT   = "µSv/h";
 var CALIBRATED  = false;   // 剂量率未做标定：显示“仅供参考”提示
 var NAME_PREFIX = "";      // 可选设备名前缀过滤，如 "DOSE"；留空 = 列出附近所有 BLE 设备
@@ -160,7 +160,7 @@ el.btnC.addEventListener("click", async function(){
   }catch(e){
     connected = false;
     if(e && e.name === "NotFoundError"){
-      log("未找到 NUS 服务。\n请确认蓝牙模块透传固件为 NUS，或修改页面顶部 UUID 常量。");
+      log("未找到 0xFFE0 服务。\n请确认模块是 VG6328A（默认 BLE 名 XLBLE），或修改页面顶部 UUID 常量。");
     }else if(e && e.name === "SecurityError"){
       log("需要 HTTPS 或 localhost 环境才能使用蓝牙。");
     }else{
