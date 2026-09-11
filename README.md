@@ -26,6 +26,7 @@ STM32 空闲USART1 ──▶ BLE 透传模块(NUS) ──无线──▶ 安卓 
 - [x] STM32 固件上报示例（`firmware/stm32_uart_report.c`）
 - [x] 外挂 BLE 接线与配置说明（`hardware_ble_wiring.md`，依据实际原理图）
 - [x] **整机完整固件 v1**（`firmware/keil_dose_app/`：计数/剂量/OLED/按键/报警/BLE 上报 + 建工程说明；待你在 Keil 编译与真机验证）
+- [x] **整机完整固件 v2**（`firmware/keil_dose_app_v2/`：适配改进版硬件 + VG6328A 软件串口；待 Keil 编译与真机验证）
 
 ## 四、网页数据协议（与未来固件约定）
 - GATT：NUS（Nordic UART Service）
@@ -42,7 +43,8 @@ STM32 空闲USART1 ──▶ BLE 透传模块(NUS) ──无线──▶ 安卓 
 - `D:\工程文件\dose-mobile\protocol.md` —— 数据协议文档（固件↔网页约定）
 - `D:\工程文件\dose-mobile\hardware_ble_wiring.md` —— 外挂 BLE 接线/配置说明
 - `D:\工程文件\dose-mobileirmware\stm32_uart_report.c` —— STM32 每秒上报示例
-- `D:\工程文件\dose-mobileirmware\keil_dose_app\` —— 整机完整固件 v1（main + oled/keys/dose/alarm/ble_report + project_setup.md 建工程说明）
+- `D:\工程文件\dose-mobile\firmware\keil_dose_app\` —— 整机完整固件 v1（旧版板子：PA12 计数/PA6-PA7-PB8-PB9 按键/PB5 LED/PB0 蜂鸣器/USART1 接 NUS 蓝牙）
+- `D:\工程文件\dose-mobile\firmware\keil_dose_app_v2\` —— **整机完整固件 v2（适配改进版板子）**：PA0 计数、PA1/PA2 OLED、PA3~PA6 按键、PA7 LED、PB8/PB9 软件串口接 VG6328A（115200）；网页已改为 0xFFE0/0xFFE2
 - `D:\工程文件\work\` —— 过程文件（论文提取文本 paper_text.txt、gh 工具与登录配置 gh-config、调试脚本等，非交付物）
 
 ## 六、如何更新网页
