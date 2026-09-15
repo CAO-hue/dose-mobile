@@ -1,0 +1,76 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1020" height="640" viewBox="0 0 1020 640">
+  <rect width="1020" height="640" fill="#ffffff"/>
+  <text x="510" y="32" text-anchor="middle" font-size="21" font-weight="bold">NEWSTER2 能谱接口 · 新增电路示意（虚线框内为新增）</text>
+
+  <!-- ASIC -->
+  <rect x="30" y="80" width="180" height="400" rx="8" fill="#f2f6fb" stroke="#2c3e50" stroke-width="1.6"/>
+  <text x="120" y="108" text-anchor="middle" font-size="14" font-weight="bold">ASIC NEWSTER2 (U4)</text>
+  <text x="205" y="150" text-anchor="end" font-size="13">PDHOUT (1)</text>
+  <text x="205" y="310" text-anchor="end" font-size="13">RSTPDH (14)</text>
+  <text x="205" y="390" text-anchor="end" font-size="13">TRIG (18)</text>
+
+  <!-- U8 level shifter (existing) -->
+  <rect x="250" y="360" width="100" height="60" rx="6" fill="#eef7ee" stroke="#2c3e50" stroke-width="1.4"/>
+  <text x="300" y="385" text-anchor="middle" font-size="12">U8 电平变换</text>
+  <text x="300" y="403" text-anchor="middle" font-size="11">(SN74LV1T34)</text>
+
+  <!-- STM32 -->
+  <rect x="770" y="80" width="200" height="420" rx="8" fill="#f2f6fb" stroke="#2c3e50" stroke-width="1.6"/>
+  <text x="870" y="108" text-anchor="middle" font-size="14" font-weight="bold">STM32F103C8T6 (U2)</text>
+  <text x="780" y="165" font-size="13">PB0  (18) ADC1_IN8</text>
+  <text x="780" y="305" font-size="13">PB10 (21) GPIO</text>
+  <text x="780" y="405" font-size="13">PB11 (22) EXTI</text>
+  <text x="780" y="470" font-size="13">PA0  (10) TIM2_ETR（原有计数）</text>
+
+  <!-- PDHOUT -> opamp -> R33 -> node -> PB0 -->
+  <line x1="210" y1="145" x2="430" y2="145" stroke="#c0392b" stroke-width="2"/>
+  <polygon points="430,115 510,145 430,175" fill="#fff5f5" stroke="#c0392b" stroke-width="2"/>
+  <text x="462" y="150" text-anchor="middle" font-size="12">U12</text>
+  <text x="462" y="166" text-anchor="middle" font-size="10">AD8531</text>
+  <line x1="430" y1="175" x2="430" y2="205" stroke="#c0392b" stroke-width="1.6"/>
+  <line x1="430" y1="205" x2="510" y2="205" stroke="#c0392b" stroke-width="1.6"/>
+  <line x1="510" y1="205" x2="510" y2="145" stroke="#c0392b" stroke-width="1.6"/>
+  <line x1="510" y1="145" x2="545" y2="145" stroke="#c0392b" stroke-width="2"/>
+  <rect x="545" y="135" width="40" height="20" fill="#ffffff" stroke="#2c3e50" stroke-width="1.4"/>
+  <text x="565" y="129" text-anchor="middle" font-size="11">R33 1k</text>
+  <line x1="585" y1="145" x2="770" y2="145" stroke="#c0392b" stroke-width="2"/>
+  <circle cx="640" cy="145" r="4" fill="#c0392b"/>
+  <text x="640" y="130" text-anchor="middle" font-size="11">MCA_ADC</text>
+  <line x1="640" y1="145" x2="640" y2="230" stroke="#2c3e50" stroke-width="1.4"/>
+  <line x1="622" y1="210" x2="658" y2="210" stroke="#2c3e50" stroke-width="1.4"/>
+  <line x1="626" y1="216" x2="654" y2="216" stroke="#2c3e50" stroke-width="1.4"/>
+  <line x1="630" y1="222" x2="650" y2="222" stroke="#2c3e50" stroke-width="1.4"/>
+  <text x="668" y="214" font-size="11">C44 100pF</text>
+  <text x="668" y="228" font-size="11">→ AGND</text>
+
+  <!-- opamp power -->
+  <text x="400" y="70" font-size="11" fill="#555">VCC3.3V / AGND：C45 100nF + C46 10µF 就近去耦</text>
+
+  <!-- RSTPDH -> R34 -> PB10 -->
+  <line x1="210" y1="305" x2="545" y2="305" stroke="#2980b9" stroke-width="2"/>
+  <rect x="545" y="295" width="40" height="20" fill="#ffffff" stroke="#2c3e50" stroke-width="1.4"/>
+  <text x="565" y="289" text-anchor="middle" font-size="11">R34 100Ω</text>
+  <line x1="585" y1="305" x2="770" y2="305" stroke="#2980b9" stroke-width="2"/>
+  <text x="660" y="298" font-size="11">1=复位 / 0=工作</text>
+
+  <!-- TRIG -> U8 -> PA0 (existing) + R35 -> PB11 -->
+  <line x1="210" y1="390" x2="250" y2="390" stroke="#27ae60" stroke-width="2"/>
+  <line x1="350" y1="390" x2="770" y2="390" stroke="#27ae60" stroke-width="2"/>
+  <line x1="600" y1="390" x2="600" y2="470" stroke="#27ae60" stroke-width="2"/>
+  <line x1="600" y1="470" x2="770" y2="470" stroke="#27ae60" stroke-width="2"/>
+  <circle cx="600" cy="390" r="4" fill="#27ae60"/>
+  <text x="612" y="384" font-size="11">触发分支（新增）</text>
+
+  <!-- dashed new-area boxes -->
+  <rect x="410" y="95" width="260" height="150" rx="8" fill="none" stroke="#c0392b" stroke-width="1.6" stroke-dasharray="7,5"/>
+  <text x="540" y="118" text-anchor="middle" font-size="11" fill="#c0392b">新增：缓冲 + RC + ADC 输入</text>
+  <rect x="530" y="280" width="70" height="45" rx="6" fill="none" stroke="#2980b9" stroke-width="1.6" stroke-dasharray="7,5"/>
+  <text x="565" y="342" text-anchor="middle" font-size="11" fill="#2980b9">新增：RSTPDH 串阻</text>
+
+  <!-- notes -->
+  <rect x="30" y="520" width="960" height="95" rx="8" fill="#fafafa" stroke="#bbb"/>
+  <text x="45" y="545" font-size="12" font-weight="bold">要点：</text>
+  <text x="45" y="566" font-size="12">1) PDHOUT 基线 1.258V、满量程≈2.76V，在 ADC 的 0~3.3V 内，直接经跟随器采样即可；</text>
+  <text x="45" y="584" font-size="12">2) RSTPDH 为高电平复位（1=复位，0=PDH 工作）；读取时序：TRIG 上升沿 → 等 ≥5µs → 读 ADC → 复位；</text>
+  <text x="45" y="602" font-size="12">3) 触发从 U8.4（与 PA0 同一网络）再引一路到 PB11，PA0/TIM2 的计数功能保持不变。</text>
+</svg>

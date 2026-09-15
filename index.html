@@ -42,6 +42,14 @@
   h2{font-size:12px; color:var(--dim); font-weight:500; margin:0 0 8px 2px; letter-spacing:1px;}
   canvas{width:100%; height:170px; display:block;}
   .btnrow{display:flex; gap:8px; flex-wrap:wrap;}
+  .hstats{display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin-bottom:8px;}
+  .hstat{background:rgba(255,255,255,.03); border:1px solid var(--line); border-radius:10px; padding:8px 4px; text-align:center;}
+  .hstat .v{font-size:16px; font-weight:600; font-variant-numeric:tabular-nums;}
+  .hstat .k{font-size:10px; color:var(--dim); margin-top:2px;}
+  .hlist{max-height:220px; overflow-y:auto; font-size:12px; border-top:1px solid var(--line);}
+  .hrow{display:grid; grid-template-columns:1.5fr 1.2fr .8fr; gap:6px; padding:7px 4px; border-bottom:1px solid rgba(255,255,255,.05);}
+  .hrow span:last-child{text-align:right;}
+  .hrow.al{color:#f85149;}
   button{flex:1 1 auto; min-height:46px; border-radius:12px; border:1px solid var(--line);
     background:var(--card); color:var(--txt); font-size:15px; padding:0 14px; cursor:pointer;}
   button.primary{background:var(--acc); border-color:var(--acc); color:#04101d; font-weight:600;}
@@ -83,6 +91,21 @@
     <canvas id="chart"></canvas>
   </div>
 
+  <div class="card">
+    <h2>历史记录（每 10 秒一条 · 最多 2000 条 · 存本机）</h2>
+    <div class="hstats">
+      <div class="hstat"><div class="v" id="hCount">0</div><div class="k">记录条数</div></div>
+      <div class="hstat"><div class="v" id="hMax">--</div><div class="k">最大剂量率</div></div>
+      <div class="hstat"><div class="v" id="hAvg">--</div><div class="k">平均剂量率</div></div>
+      <div class="hstat"><div class="v" id="hAlarm">0</div><div class="k">报警次数</div></div>
+    </div>
+    <div id="hList" class="hlist"></div>
+    <div class="btnrow" style="margin-top:10px;">
+      <button id="btnExport">导出 CSV</button>
+      <button id="btnClear" class="danger">清空历史</button>
+    </div>
+  </div>
+
   <div class="btnrow">
     <button id="btnConnect" class="primary">连接仪器</button>
     <button id="btnDisconnect" class="danger" disabled>断开</button>
@@ -100,7 +123,10 @@ var NUS_NOTIFY_UUID  = "0000ffe2-0000-1000-8000-00805f9b34fb"; // VG6328A 通知
 var RATE_UNIT   = "µSv/h";
 var CALIBRATED  = false;   // 剂量率未做标定：显示“仅供参考”提示
 var NAME_PREFIX = "";      // 可选设备名前缀过滤，如 "DOSE"；留空 = 列出附近所有 BLE 设备
-var HISTORY_N   = 180;     // 趋势点数（每秒 1 点 = 3 分钟）
+var HISTORY_N   = 180;
+var HISTORY_KEY = "dose_history_v1";   // 历史记录存储键
+var HISTORY_MAX = 2000;                // 最多保存条数
+var HISTORY_INTERVAL_MS = 10000;       // 每 10 秒记录一条     // 趋势点数（每秒 1 点 = 3 分钟）
 
 /* ===== 状态 ===== */
 var device = null, notifyChar = null, rxBuf = "", rxText = "", connected = false, connecting = false;
@@ -115,6 +141,8 @@ var el = {
   rateNote:$("rateNote"),
   alarm:$("alarmBox"), dot:$("dot"), dev:$("devName"), log:$("log"),
   chart:$("chart"), rateCard:$("rateCard"),
+  hCount:$("hCount"), hMax:$("hMax"), hAvg:$("hAvg"), hAlarm:$("hAlarm"), hList:$("hList"),
+  btnExport:$("btnExport"), btnClear:$("btnClear"),
   btnC:$("btnConnect"), btnD:$("btnDisconnect"), btnDemo:$("btnDemo")
 };
 
@@ -219,6 +247,7 @@ function apply(o){
             : (rate !== null && typeof o.thr === "number" && rate >= o.thr);
   last = { cps:o.cps, rate:rate, acc:o.acc, thr:o.thr, alarm:alarm };
   render();
+  maybeRecord();
 }
 
 /* ===== 渲染 ===== */
@@ -353,7 +382,90 @@ function stopDemo(){
   setDot("");
   log("演示已停止。");
 }
+/* ===== 历史记录（localStorage 本地保存） ===== */
+var historyData = [];
+function loadHistory(){
+  try{
+    var s = localStorage.getItem(HISTORY_KEY);
+    historyData = s ? JSON.parse(s) : [];
+    if(!Array.isArray(historyData)) historyData = [];
+  }catch(_){ historyData = []; }
+}
+function saveHistory(){
+  try{
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(historyData));
+  }catch(e){
+    try{
+      historyData = historyData.slice(-Math.floor(HISTORY_MAX/2));
+      localStorage.setItem(HISTORY_KEY, JSON.stringify(historyData));
+    }catch(_){}
+  }
+}
+function maybeRecord(){
+  if(!last) return;
+  var now = Date.now();
+  if(historyData.length && (now - historyData[historyData.length-1].t) < HISTORY_INTERVAL_MS) return;
+  historyData.push({ t:now, rate:last.rate, cps:last.cps, acc:last.acc, thr:last.thr, al:last.alarm?1:0 });
+  if(historyData.length > HISTORY_MAX) historyData = historyData.slice(-HISTORY_MAX);
+  saveHistory();
+  renderHistory();
+}
+function fmtTime(ms){
+  var d = new Date(ms);
+  function p(n){ return (n<10?"0":"")+n; }
+  return (d.getMonth()+1)+"/"+d.getDate()+" "+p(d.getHours())+":"+p(d.getMinutes())+":"+p(d.getSeconds());
+}
+function renderHistory(){
+  if(!el.hList) return;
+  var n = historyData.length;
+  el.hCount.textContent = n;
+  var maxV = 0, sum = 0, cnt = 0, al = 0, i;
+  for(i=0;i<n;i++){
+    var r = historyData[i];
+    if(typeof r.rate === "number"){ if(r.rate > maxV) maxV = r.rate; sum += r.rate; cnt++; }
+    if(r.al) al++;
+  }
+  el.hMax.textContent   = cnt ? maxV.toFixed(3) : "--";
+  el.hAvg.textContent   = cnt ? (sum/cnt).toFixed(3) : "--";
+  el.hAlarm.textContent = al;
+  var rows = "";
+  for(i=n-1; i>=0 && i>=n-20; i--){
+    var r2 = historyData[i];
+    rows += '<div class="hrow'+(r2.al?' al':'')+'"><span>'+fmtTime(r2.t)+'</span>'
+          + '<span>'+(r2.rate!=null?Number(r2.rate).toFixed(3):"--")+' µSv/h</span>'
+          + '<span>'+(r2.cps!=null?r2.cps:"--")+' CPS</span></div>';
+  }
+  el.hList.innerHTML = rows || '<div class="hrow" style="color:#8b98a5">暂无记录（连接仪器或演示模式后，每 10 秒自动记录一条）</div>';
+}
+function clearHistory(){
+  if(!confirm("确定清空全部历史记录吗？")) return;
+  historyData = [];
+  saveHistory();
+  renderHistory();
+  log("历史记录已清空。");
+}
+function exportCSV(){
+  if(!historyData.length){ log("暂无历史记录可导出。"); return; }
+  var out = "时间,剂量率(uSv/h),计数率(CPS),累计剂量(uSv),报警\n";
+  for(var i=0;i<historyData.length;i++){
+    var r = historyData[i];
+    out += [new Date(r.t).toLocaleString(), (r.rate!=null?r.rate:""), (r.cps!=null?r.cps:""), (r.acc!=null?r.acc:""), (r.al?1:0)].join(",") + "\n";
+  }
+  var blob = new Blob(["\ufeff"+out], {type:"text/csv;charset=utf-8"});
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement("a");
+  a.href = url;
+  a.download = "剂量历史_" + new Date().toISOString().slice(0,10) + ".csv";
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  log("已导出 CSV（" + historyData.length + " 条）。");
+}
+el.btnExport.addEventListener("click", exportCSV);
+el.btnClear.addEventListener("click", clearHistory);
+
 drawChart();
+loadHistory();
+renderHistory();
 </script>
 </body>
 </html>
