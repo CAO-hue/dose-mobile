@@ -493,14 +493,22 @@ function drawSpec(){
     for(i=0;i<SPEC_N;i++){ if(spec[i] > maxV) maxV = spec[i]; }
     var logMax = Math.ceil(Math.log10(maxV)); if(logMax < 3) logMax = 3;
 
-    /* 网格 + 对数刻度 */
+    /* 网格 + 对数刻度（自适应步长：网格线保持在 4~6 条） */
     ctx.font = "9px sans-serif";
-    for(var k=0;k<=logMax;k++){
-      var y = padT + plotH*(1 - k/logMax);
+    var gridStep = Math.max(1, Math.ceil(logMax / 4));
+    var kk;
+    for(kk=0; kk<=logMax; kk+=gridStep){
+      var y = padT + plotH*(1 - kk/logMax);
       ctx.strokeStyle = "rgba(139,152,165,0.18)"; ctx.lineWidth = 1;
       ctx.beginPath(); ctx.moveTo(padL,y); ctx.lineTo(w-padR,y); ctx.stroke();
       ctx.fillStyle = "#8b98a5"; ctx.textAlign = "right";
-      ctx.fillText("1e"+k, padL-5, y+3);
+      ctx.fillText("1e"+kk, padL-5, y+3);
+    }
+    if(logMax % gridStep !== 0){    /* 顶部量级补齐 */
+      ctx.strokeStyle = "rgba(139,152,165,0.18)"; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(padL,padT); ctx.lineTo(w-padR,padT); ctx.stroke();
+      ctx.fillStyle = "#8b98a5"; ctx.textAlign = "right";
+      ctx.fillText("1e"+logMax, padL-5, padT+3);
     }
     if(specRecv === 0){
       ctx.fillStyle = "#8b98a5"; ctx.textAlign = "center";
