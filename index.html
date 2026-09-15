@@ -57,6 +57,36 @@
   button.danger{color:var(--bad);border-color:rgba(248,81,73,.4);}
   button:disabled{opacity:.45;cursor:not-allowed;}
   #log{font-size:10px;color:var(--dim);min-height:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:0 0 auto;}
+
+  /* ===== 电脑宽屏布局（>=900px）：左栏数据，右栏图表 ===== */
+  @media (min-width: 900px){
+    .wrap{max-width:1400px; padding:10px; display:grid; gap:8px;
+          grid-template-columns: 380px 1fr;
+          grid-template-rows: auto auto auto auto auto;
+          grid-template-areas:
+            "header header"
+            "top    charts"
+            "metrics charts"
+            "btns   hist"
+            "log    log";
+          justify-content:stretch;}
+    header{grid-area:header;}
+    .toprow{grid-area:top; flex-direction:column;}
+    .toprow .rate{flex:0 0 auto; padding:8px;}
+    .toprow .rate .big{font-size:46px;}
+    .toprow .minigrid{flex:0 0 auto;}
+    .toprow .stat .v{font-size:20px;}
+    .metrics{grid-area:metrics;}
+    .metrics .hstat .v{font-size:16px;}
+    .wrap > .btnrow{grid-area:btns;}
+    .wrap > .btnrow button{min-height:42px; font-size:15px;}
+    #log{grid-area:log; font-size:12px;}
+    .chartrow{grid-area:charts; max-height:none; min-height:300px;}
+    .chartrow h2{font-size:13px;}
+    .hist{grid-area:hist;}
+    .hist .hstat .v{font-size:15px;}
+    .hist .hlist{max-height:56px; font-size:12px;}
+  }
 </style>
 </head>
 <body>
