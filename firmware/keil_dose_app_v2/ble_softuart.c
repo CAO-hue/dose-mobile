@@ -106,6 +106,22 @@ static void app_f3(char *buf, uint16_t *pos, float v)
     pad3(m % 1000u, t);
     q = t; while (*q) buf[(*pos)++] = *q++;
 }
+/* 5 位小数：累计剂量用小增量也能看出来 */
+static void app_f5(char *buf, uint16_t *pos, float v)
+{
+    uint32_t m = (uint32_t)(v * 100000.0f + 0.5f);
+    char t[24]; char *q; uint32_t f;
+    u32_str(m / 100000u, t);
+    q = t; while (*q) buf[(*pos)++] = *q++;
+    buf[(*pos)++] = '.';
+    f = m % 100000u;
+    buf[(*pos)++] = (char)('0' + (f / 10000u) % 10u);
+    buf[(*pos)++] = (char)('0' + (f / 1000u) % 10u);
+    buf[(*pos)++] = (char)('0' + (f / 100u) % 10u);
+    buf[(*pos)++] = (char)('0' + (f / 10u) % 10u);
+    buf[(*pos)++] = (char)('0' + (f % 10u));
+}
+
 static void app_s(char *buf, uint16_t *pos, const char *s)
 { while (*s) buf[(*pos)++] = *s++; }
 
@@ -117,7 +133,7 @@ void ble_softuart_report_1s(void)
     u32_str(dose_cps(), t); app_s(buf, &p, t);
 
     app_s(buf, &p, ",\"rate\":"); app_f3(buf, &p, dose_rate());
-    app_s(buf, &p, ",\"acc\":");  app_f3(buf, &p, dose_acc());
+    app_s(buf, &p, ",\"acc\":");  app_f5(buf, &p, dose_acc());
     app_s(buf, &p, ",\"thr\":");  app_f3(buf, &p, dose_thr());
 
     app_s(buf, &p, ",\"al\":");
