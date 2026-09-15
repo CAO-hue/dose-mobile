@@ -163,7 +163,11 @@ void EXTI15_10_IRQHandler(void)
             if (v > MCA_ADC_BASE)
             {
                 ch = ((uint32_t)(v - MCA_ADC_BASE) * MCA_NCH) / (MCA_ADC_FULL - MCA_ADC_BASE);
-                if (ch < MCA_NCH) { hist[ch]++; binned++; }
+                if (ch < MCA_NCH)
+                {
+                    if (hist[ch] < 0xFFFFFFFFu) hist[ch]++;   /* 饱和保护：到顶不回绕 */
+                    binned++;
+                }
                 else              { outrange++; }   /* > 1600 keV */
             }
             else
