@@ -10,5 +10,6 @@
  */
 void ble_softuart_init(void);
 void ble_softuart_report_1s(void);
+void ble_softuart_send(const char *s);   /* 通用发送（MCA 上传用） */
 
 #endif /* __BLE_SOFTUART_H */

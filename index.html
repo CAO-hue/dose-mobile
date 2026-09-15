@@ -50,6 +50,8 @@
   .hrow{display:grid; grid-template-columns:1.5fr 1.2fr .8fr; gap:6px; padding:7px 4px; border-bottom:1px solid rgba(255,255,255,.05);}
   .hrow span:last-child{text-align:right;}
   .hrow.al{color:#f85149;}
+  #spChart{height:240px;}
+  .spnote{font-size:11px; color:var(--dim); margin-top:8px; text-align:center;}
   button{flex:1 1 auto; min-height:46px; border-radius:12px; border:1px solid var(--line);
     background:var(--card); color:var(--txt); font-size:15px; padding:0 14px; cursor:pointer;}
   button.primary{background:var(--acc); border-color:var(--acc); color:#04101d; font-weight:600;}
@@ -89,6 +91,24 @@
   <div class="card">
     <h2>计数率趋势（最近 3 分钟 · 单位 CPS）</h2>
     <canvas id="chart"></canvas>
+  </div>
+
+  <div class="card">
+    <h2>能谱（256 道 · 对数纵轴 · 死时间实测）</h2>
+    <canvas id="spChart"></canvas>
+    <div class="hstats" style="margin-top:10px;">
+      <div class="hstat"><div class="v" id="spTrig">--</div><div class="k">入射 N_TRIG</div></div>
+      <div class="hstat"><div class="v" id="spProc">--</div><div class="k">记录 N_proc</div></div>
+      <div class="hstat"><div class="v" id="spDead">--</div><div class="k">死时间(双计数)</div></div>
+      <div class="hstat"><div class="v" id="spLive">--</div><div class="k">活时间</div></div>
+    </div>
+    <div class="hstats">
+      <div class="hstat"><div class="v" id="spRate">--</div><div class="k">输出率 cps</div></div>
+      <div class="hstat"><div class="v" id="spLam">--</div><div class="k">入射率 cps</div></div>
+      <div class="hstat"><div class="v" id="spDead2">--</div><div class="k">死时间(忙时间)</div></div>
+      <div class="hstat"><div class="v" id="spTau">--</div><div class="k">τ_eff (µs)</div></div>
+    </div>
+    <div class="spnote" id="spNote">等待能谱数据…（仪器上电复位后自动开始累积，按板子复位键可清零）</div>
   </div>
 
   <div class="card">
@@ -142,6 +162,8 @@ var el = {
   alarm:$("alarmBox"), dot:$("dot"), dev:$("devName"), log:$("log"),
   chart:$("chart"), rateCard:$("rateCard"),
   hCount:$("hCount"), hMax:$("hMax"), hAvg:$("hAvg"), hAlarm:$("hAlarm"), hList:$("hList"),
+  spChart:$("spChart"), spTrig:$("spTrig"), spProc:$("spProc"), spDead:$("spDead"), spLive:$("spLive"),
+  spRate:$("spRate"), spLam:$("spLam"), spDead2:$("spDead2"), spTau:$("spTau"), spNote:$("spNote"),
   btnExport:$("btnExport"), btnClear:$("btnClear"),
   btnC:$("btnConnect"), btnD:$("btnDisconnect"), btnDemo:$("btnDemo")
 };
@@ -232,6 +254,8 @@ function onData(ev){
     if(!line) continue;
     var obj = null;
     try{ obj = JSON.parse(line); }catch(_){ continue; } // 坏行跳过
+    if(obj && obj.t === "s" && obj.ch){ applySpec(obj); continue; }
+    if(obj && obj.t === "m"){ applyMetrics(obj); continue; }
     if(obj && (typeof obj.cps === "number" || typeof obj.rate === "number")){ apply(obj); }
   }
 }
@@ -382,6 +406,106 @@ function stopDemo(){
   setDot("");
   log("演示已停止。");
 }
+/* ===== 能谱 + 实测死时间（数据全部来自仪器上报，不做估算） ===== */
+var SPEC_N = 256;
+var spec = new Array(SPEC_N).fill(0);
+var specRecv = 0;            /* 已收到的道数（用于判断是否完整一帧） */
+
+function applySpec(o){
+  try{
+    var chunk = o.ch || [];
+    var idx = (typeof o.i === "number" ? o.i : 0) * chunk.length;
+    for(var i=0;i<chunk.length && (idx+i)<SPEC_N;i++){ spec[idx+i] = Number(chunk[i]) || 0; }
+    specRecv = Math.min(SPEC_N, Math.max(specRecv, idx + chunk.length));
+    drawSpec();
+  }catch(e){ err("能谱解析错误: " + e.message); }
+}
+
+function applyMetrics(o){
+  try{
+    var trig = Number(o.trig)||0, proc = Number(o.proc)||0;
+    var bin = Number(o.bin)||0, oor = Number(o.oor)||0, pile = Number(o.pile)||0;
+    var busyUs = Number(o.busy_us)||0, totalMs = Number(o.total_ms)||0;
+    var T = totalMs/1000;
+    var Dcnt  = trig>0 ? (1 - proc/trig) : null;          /* 双计数法：1 - N_proc/N_TRIG */
+    var Dbusy = totalMs>0 ? (busyUs/(totalMs*1000)) : null;/* 忙时间法（交叉校验） */
+    var m     = T>0 ? proc/T : null;                        /* 输出率 */
+    var lam   = T>0 ? trig/T : null;                        /* 入射率 */
+    var tauUs = (Dcnt!==null && m>0) ? (Dcnt/m*1e6) : null; /* 由实测反推 τ_eff */
+
+    el.spTrig.textContent = trig;
+    el.spProc.textContent = proc;
+    el.spDead.textContent = (Dcnt===null) ? "--" : (Dcnt*100).toFixed(2) + "%";
+    el.spLive.textContent = (Dcnt===null || T<=0) ? "--" : (T*(1-Dcnt)).toFixed(1) + "s";
+    el.spRate.textContent = (m===null) ? "--" : m.toFixed(1);
+    el.spLam.textContent  = (lam===null) ? "--" : lam.toFixed(1);
+    el.spDead2.textContent= (Dbusy===null) ? "--" : (Dbusy*100).toFixed(2) + "%";
+    el.spTau.textContent  = (tauUs===null) ? "--" : tauUs.toFixed(2);
+    el.spNote.textContent = "落入谱 " + bin + " ｜ 超范围 " + oor + " ｜ 堆积丢弃 " + pile
+                          + " ｜ 采集总时长 " + T.toFixed(1) + " s";
+  }catch(e){ err("死时间解析错误: " + e.message); }
+}
+
+function drawSpec(){
+  try{
+    var cv = el.spChart;
+    if(!cv) return;
+    var ctx = cv.getContext("2d");
+    var dpr = window.devicePixelRatio || 1;
+    var w = cv.clientWidth || 320, h = cv.clientHeight || 240;
+    if(cv.width !== Math.round(w*dpr)){ cv.width = Math.round(w*dpr); cv.height = Math.round(h*dpr); }
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+    ctx.clearRect(0,0,w,h);
+    var padL = 46, padR = 6, padT = 8, padB = 26;
+    var plotW = w - padL - padR, plotH = h - padT - padB;
+    var maxV = 1, i;
+    for(i=0;i<SPEC_N;i++){ if(spec[i] > maxV) maxV = spec[i]; }
+    var logMax = Math.ceil(Math.log10(maxV)); if(logMax < 1) logMax = 1;
+
+    /* 网格 + 对数刻度 */
+    ctx.font = "10px sans-serif";
+    for(var k=0;k<=logMax;k++){
+      var y = padT + plotH*(1 - k/logMax);
+      ctx.strokeStyle = "rgba(139,152,165,0.18)"; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(padL,y); ctx.lineTo(w-padR,y); ctx.stroke();
+      ctx.fillStyle = "#8b98a5"; ctx.textAlign = "right";
+      ctx.fillText("1e"+k, padL-5, y+3);
+    }
+    if(specRecv === 0){
+      ctx.fillStyle = "#8b98a5"; ctx.textAlign = "center";
+      ctx.fillText("等待能谱数据…", padL + plotW/2, h/2);
+      return;
+    }
+    /* 谱线 */
+    ctx.beginPath();
+    for(i=0;i<SPEC_N;i++){
+      var x = padL + (i/(SPEC_N-1))*plotW;
+      var v = spec[i] > 0 ? Math.log10(spec[i]) : 0;
+      var yy = padT + plotH*(1 - v/logMax);
+      if(i===0) ctx.moveTo(x,yy); else ctx.lineTo(x,yy);
+    }
+    ctx.strokeStyle = "#58a6ff"; ctx.lineWidth = 2; ctx.stroke();
+    ctx.lineTo(w-padR, padT+plotH); ctx.lineTo(padL, padT+plotH); ctx.closePath();
+    ctx.fillStyle = "rgba(88,166,255,0.15)"; ctx.fill();
+    /* 横轴 */
+    ctx.textAlign = "center"; ctx.fillStyle = "#8b98a5";
+    ctx.fillText("道数 0", padL, h-8);
+    ctx.fillText("128", padL + plotW/2, h-8);
+    ctx.fillText("255", w-padR, h-8);
+    /* 最强道标记 */
+    var mx = 0; for(i=1;i<SPEC_N;i++){ if(spec[i] > spec[mx]) mx = i; }
+    if(spec[mx] > 1){
+      var xm = padL + (mx/(SPEC_N-1))*plotW;
+      ctx.strokeStyle = "#f0883e"; ctx.setLineDash([5,4]); ctx.lineWidth = 1.4;
+      ctx.beginPath(); ctx.moveTo(xm,padT); ctx.lineTo(xm,padT+plotH); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = "#f0883e"; ctx.textAlign = "left";
+      ctx.fillText("峰: 道" + mx, Math.min(xm+4, w-70), padT+12);
+    }
+  }catch(e){ err("能谱绘制错误: " + e.message); }
+}
+window.addEventListener("resize", drawSpec);
+
 /* ===== 历史记录（localStorage 本地保存） ===== */
 var historyData = [];
 function loadHistory(){
@@ -466,6 +590,7 @@ el.btnClear.addEventListener("click", clearHistory);
 drawChart();
 loadHistory();
 renderHistory();
+drawSpec();
 </script>
 </body>
 </html>

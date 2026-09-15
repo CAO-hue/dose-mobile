@@ -1,12 +1,13 @@
-/* stm32f10x_conf.h —— 标准外设库配置：只使能本项目用到的外设 */
+/* stm32f10x_conf.h —— 标准外设库配置（v2：只启用本项目用到的外设） */
 #ifndef __STM32F10x_CONF_H
 #define __STM32F10x_CONF_H
 
 #include "stm32f10x_adc.h"
+#include "stm32f10x_exti.h"
 #include "stm32f10x_gpio.h"
 #include "stm32f10x_rcc.h"
 #include "stm32f10x_tim.h"
-#include "stm32f10x_usart.h"
+#include "misc.h"
 
 #ifdef USE_FULL_ASSERT
 #define assert_param(expr) ((expr) ? (void)0 : assert_failed((uint8_t *)__FILE__, __LINE__))

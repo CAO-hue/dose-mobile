@@ -14,17 +14,24 @@
 #define CPU_HZ       72000000u
 #define BIT_CYCLES   (CPU_HZ / BLE_BAUD)    /* 625 */
 
+/* DWT 周期计数器寄存器（旧版 CMSIS 没有 DWT 定义，这里直接访问寄存器） */
+#define DWT_CTRL_REG    (*(volatile uint32_t *)0xE0001000u)
+#define DWT_CYCCNT_REG  (*(volatile uint32_t *)0xE0001004u)
+#define DEMCR_REG       (*(volatile uint32_t *)0xE000EDFCu)
+#define TRCENA_BIT      (1u << 24)
+#define CYCCNTENA_BIT   (1u << 0)
+
 static void dwt_init(void)
 {
-    CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;
-    DWT->CYCCNT = 0u;
-    DWT->CTRL  |= DWT_CTRL_CYCCNTENA_Msk;
+    DEMCR_REG |= TRCENA_BIT;
+    DWT_CYCCNT_REG = 0u;
+    DWT_CTRL_REG |= CYCCNTENA_BIT;
 }
 
 static void delay_cycles(uint32_t c)
 {
-    uint32_t start = DWT->CYCCNT;
-    while ((DWT->CYCCNT - start) < c) { }
+    uint32_t start = DWT_CYCCNT_REG;
+    while ((DWT_CYCCNT_REG - start) < c) { }
 }
 
 void ble_softuart_init(void)
@@ -92,9 +99,12 @@ static void app_f3(char *buf, uint16_t *pos, float v)
 {
     uint32_t m = (uint32_t)(v * 1000.0f + 0.5f);
     char t[24];
-    u32_str(m / 1000u, t); while (*t) buf[(*pos)++] = *t++;
+    char *q;
+    u32_str(m / 1000u, t);
+    q = t; while (*q) buf[(*pos)++] = *q++;
     buf[(*pos)++] = '.';
-    pad3(m % 1000u, t); while (*t) buf[(*pos)++] = *t++;
+    pad3(m % 1000u, t);
+    q = t; while (*q) buf[(*pos)++] = *q++;
 }
 static void app_s(char *buf, uint16_t *pos, const char *s)
 { while (*s) buf[(*pos)++] = *s++; }
@@ -116,4 +126,10 @@ void ble_softuart_report_1s(void)
     buf[p] = '\0';
 
     tx_str(buf);
+}
+
+/* 通用发送接口（供 MCA 等模块使用） */
+void ble_softuart_send(const char *s)
+{
+    tx_str(s);
 }

@@ -16,6 +16,7 @@
 #include "dose.h"
 #include "alarm.h"
 #include "ble_softuart.h"
+#include "mca.h"
 
 volatile uint32_t g_sys_ms = 0u;
 
@@ -35,7 +36,7 @@ static void ap_str(char *b, uint16_t *p, const char *s)
 static void ap_u32(char *b, uint16_t *p, uint32_t v)
 {
     char t[12];
-    uint8_t i = 0u, j = 0u;
+    uint8_t i = 0u;
     if (v == 0u) { ap_char(b, p, '0'); return; }
     while (v) { t[i++] = (char)('0' + (v % 10u)); v /= 10u; }
     while (i) ap_char(b, p, t[--i]);
@@ -105,6 +106,7 @@ int main(void)
     alarm_init();
     dose_init();
     ble_softuart_init();
+    mca_init();
 
     last_sec  = g_sys_ms / 1000u;
     thr_shown = dose_thr();
@@ -122,9 +124,11 @@ int main(void)
         if (sec != last_sec)
         {
             last_sec = sec;
-            dose_tick_1s();      /* 读计数/平滑/剂量/报警判定 */
+            dose_tick_1s();
+            mca_tick_1s();      /* 读计数/平滑/剂量/报警判定 */
             alarm_refresh();     /* 刷新声光报警 */
-            ble_softuart_report_1s();     /* 向手机发一行 JSON */
+            ble_softuart_report_1s();
+            if (mca_upload_due()) { mca_upload(); }     /* 向手机发一行 JSON */
             oled_draw_all();
         }
 
