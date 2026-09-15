@@ -122,19 +122,11 @@
   </div>
 
   <div class="card metrics">
-    <div class="hstats">
-      <div class="hstat"><div class="v" id="spTrig">--</div><div class="k">入射 N_TRIG</div></div>
-      <div class="hstat"><div class="v" id="spProc">--</div><div class="k">记录 N_proc</div></div>
-      <div class="hstat"><div class="v" id="spDead">--</div><div class="k">死时间(双计数)</div></div>
-      <div class="hstat"><div class="v" id="spLive">--</div><div class="k">活时间</div></div>
+    <div class="hstats" style="grid-template-columns:repeat(3,1fr)">
+      <div class="hstat"><div class="v" id="spTrig">--</div><div class="k">入射计数</div></div>
+      <div class="hstat"><div class="v" id="spProc">--</div><div class="k">记录计数</div></div>
+      <div class="hstat"><div class="v" id="spDead">--</div><div class="k">死区时间</div></div>
     </div>
-    <div class="hstats">
-      <div class="hstat"><div class="v" id="spRate">--</div><div class="k">输出率 cps</div></div>
-      <div class="hstat"><div class="v" id="spLam">--</div><div class="k">入射率 cps</div></div>
-      <div class="hstat"><div class="v" id="spDead2">--</div><div class="k">死时间(忙时间)</div></div>
-      <div class="hstat"><div class="v" id="spTau">--</div><div class="k">τ_eff (µs)</div></div>
-    </div>
-    <div class="spnote" id="spNote">等待能谱数据…（区间 30~1600 keV，复位键清零）</div>
   </div>
 
   <div class="card hist">
@@ -187,8 +179,7 @@ var el = {
   alarm:$("alarmBox"), dot:$("dot"), dev:$("devName"), log:$("log"),
   chart:$("chart"), rateCard:$("rateCard"),
   hCount:$("hCount"), hMax:$("hMax"), hAvg:$("hAvg"), hAlarm:$("hAlarm"), hList:$("hList"),
-  spChart:$("spChart"), spTrig:$("spTrig"), spProc:$("spProc"), spDead:$("spDead"), spLive:$("spLive"),
-  spRate:$("spRate"), spLam:$("spLam"), spDead2:$("spDead2"), spTau:$("spTau"), spNote:$("spNote"),
+  spChart:$("spChart"), spTrig:$("spTrig"), spProc:$("spProc"), spDead:$("spDead"),
   btnExport:$("btnExport"), btnClear:$("btnClear"),
   btnC:$("btnConnect"), btnD:$("btnDisconnect"), btnDemo:$("btnDemo")
 };
@@ -479,26 +470,11 @@ function applySpec(o){
 function applyMetrics(o){
   try{
     var trig = Number(o.trig)||0, proc = Number(o.proc)||0;
-    var bin = Number(o.bin)||0, oor = Number(o.oor)||0, pile = Number(o.pile)||0;
-    var busyUs = Number(o.busy_us)||0, totalMs = Number(o.total_ms)||0;
-    var T = totalMs/1000;
-    var Dcnt  = trig>0 ? (1 - proc/trig) : null;          /* 双计数法：1 - N_proc/N_TRIG */
-    var Dbusy = totalMs>0 ? (busyUs/(totalMs*1000)) : null;/* 忙时间法（交叉校验） */
-    var m     = T>0 ? proc/T : null;                        /* 输出率 */
-    var lam   = T>0 ? trig/T : null;                        /* 入射率 */
-    var tauUs = (Dcnt!==null && m>0) ? (Dcnt/m*1e6) : null; /* 由实测反推 τ_eff */
-
+    var Dcnt = trig>0 ? (1 - proc/trig) : null;   /* 死区时间 = 1 - 记录/入射（实测） */
     el.spTrig.textContent = trig;
     el.spProc.textContent = proc;
     el.spDead.textContent = (Dcnt===null) ? "--" : (Dcnt*100).toFixed(2) + "%";
-    el.spLive.textContent = (Dcnt===null || T<=0) ? "--" : (T*(1-Dcnt)).toFixed(1) + "s";
-    el.spRate.textContent = (m===null) ? "--" : m.toFixed(1);
-    el.spLam.textContent  = (lam===null) ? "--" : lam.toFixed(1);
-    el.spDead2.textContent= (Dbusy===null) ? "--" : (Dbusy*100).toFixed(2) + "%";
-    el.spTau.textContent  = (tauUs===null) ? "--" : tauUs.toFixed(2);
-    el.spNote.textContent = "落入谱 " + bin + " ｜ 超范围 " + oor + " ｜ 堆积丢弃 " + pile
-                          + " ｜ 采集总时长 " + T.toFixed(1) + " s";
-  }catch(e){ err("死时间解析错误: " + e.message); }
+  }catch(e){ err("死区时间解析错误: " + e.message); }
 }
 
 function drawSpec(){
