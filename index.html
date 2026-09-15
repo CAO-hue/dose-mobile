@@ -116,7 +116,7 @@
       <canvas id="chart"></canvas>
     </div>
     <div class="card">
-      <h2>能谱 (256道)</h2>
+      <h2>能谱 (30~1600 keV · 256道)</h2>
       <canvas id="spChart"></canvas>
     </div>
   </div>
@@ -134,7 +134,7 @@
       <div class="hstat"><div class="v" id="spDead2">--</div><div class="k">死时间(忙时间)</div></div>
       <div class="hstat"><div class="v" id="spTau">--</div><div class="k">τ_eff (µs)</div></div>
     </div>
-    <div class="spnote" id="spNote">等待能谱数据…（复位键可清零）</div>
+    <div class="spnote" id="spNote">等待能谱数据…（区间 30~1600 keV，复位键清零）</div>
   </div>
 
   <div class="card hist">
@@ -435,6 +435,10 @@ function stopDemo(){
 }
 /* ===== 能谱 + 实测死时间（数据全部来自仪器上报，不做估算） ===== */
 var SPEC_N = 256;
+var SPEC_EMIN = 30;      /* keV，区间下限 */
+var SPEC_EMAX = 1600;    /* keV，区间上限 */
+var SPEC_KEV_PER_CH = (SPEC_EMAX - SPEC_EMIN) / SPEC_N;   /* ≈6.13 keV/道 */
+function chToKeV(ch){ return SPEC_EMIN + (SPEC_EMAX - SPEC_EMIN) * ch / (SPEC_N - 1); }
 var spec = new Array(SPEC_N).fill(0);
 var specRecv = 0;            /* 已收到的道数（用于判断是否完整一帧） */
 
@@ -514,12 +518,18 @@ function drawSpec(){
     ctx.strokeStyle = "#58a6ff"; ctx.lineWidth = 2; ctx.stroke();
     ctx.lineTo(w-padR, padT+plotH); ctx.lineTo(padL, padT+plotH); ctx.closePath();
     ctx.fillStyle = "rgba(88,166,255,0.15)"; ctx.fill();
-    /* 横轴 */
+    /* 横轴：能量 (keV) */
     ctx.textAlign = "center"; ctx.fillStyle = "#8b98a5";
-    ctx.fillText("道数 0", padL, h-8);
-    ctx.fillText("128", padL + plotW/2, h-8);
-    ctx.fillText("255", w-padR, h-8);
-    /* 最强道标记 */
+    var ticks = (plotW > 300) ? [200,400,600,800,1000,1200,1400,1600] : [400,800,1200,1600];
+    for(i=0;i<ticks.length;i++){
+      var ke = ticks[i];
+      if(ke < SPEC_EMIN || ke > SPEC_EMAX) continue;
+      var xx = padL + ((ke - SPEC_EMIN)/(SPEC_EMAX - SPEC_EMIN))*plotW;
+      ctx.strokeStyle = "rgba(139,152,165,0.10)";
+      ctx.beginPath(); ctx.moveTo(xx,padT); ctx.lineTo(xx,padT+plotH); ctx.stroke();
+      ctx.fillText(ke + "", xx, h-8);
+    }
+    /* 最强道标记（换算成 keV） */
     var mx = 0; for(i=1;i<SPEC_N;i++){ if(spec[i] > spec[mx]) mx = i; }
     if(spec[mx] > 1){
       var xm = padL + (mx/(SPEC_N-1))*plotW;
@@ -527,7 +537,7 @@ function drawSpec(){
       ctx.beginPath(); ctx.moveTo(xm,padT); ctx.lineTo(xm,padT+plotH); ctx.stroke();
       ctx.setLineDash([]);
       ctx.fillStyle = "#f0883e"; ctx.textAlign = "left";
-      ctx.fillText("峰: 道" + mx, Math.min(xm+4, w-70), padT+12);
+      ctx.fillText("峰≈" + Math.round(chToKeV(mx)) + " keV", Math.min(xm+4, w-92), padT+12);
     }
   }catch(e){ err("能谱绘制错误: " + e.message); }
 }

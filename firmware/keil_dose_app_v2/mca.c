@@ -23,10 +23,13 @@
 #define CPU_MHZ           72u
 #define CYCLES_PER_US     (CPU_MHZ)
 
-/* PDHOUT 映射基准（NEWSTAR2 数据手册值，标定后可改）：
- *   基线 1.258V -> ADC 码 1561 ; 满量程 (60fC*25mV/fC+1.258V)=2.758V -> 3425 */
-#define MCA_ADC_BASE      1561u
-#define MCA_ADC_FULL      3425u
+/* 能谱能量区间：30 ~ 1600 keV（覆盖 241Am 59.5 / 137Cs 662 / 60Co 1332 / 40K 1461）
+ * 换算：1fC≈28.7keV，增益 25mV/fC，PDHOUT 基线 1.258V，ADC=3.3V/4096
+ *   30 keV  -> 1.284V -> ADC 1594
+ *   1600 keV-> 2.652V -> ADC 3292
+ * （标称值；实际能量刻度用标准源标定后可再修正） */
+#define MCA_ADC_BASE      1594u   /* 30 keV */
+#define MCA_ADC_FULL      3292u   /* 1600 keV */
 
 /* DWT 周期计数器（旧版 CMSIS 无定义，直接访问寄存器） */
 #define DWT_CTRL_REG      (*(volatile uint32_t *)0xE0001000u)
@@ -160,14 +163,13 @@ void EXTI15_10_IRQHandler(void)
             if (v > MCA_ADC_BASE)
             {
                 ch = ((uint32_t)(v - MCA_ADC_BASE) * MCA_NCH) / (MCA_ADC_FULL - MCA_ADC_BASE);
+                if (ch < MCA_NCH) { hist[ch]++; binned++; }
+                else              { outrange++; }   /* > 1600 keV */
             }
             else
             {
-                ch = 0u;
+                outrange++;                          /* < 30 keV，低于区间下限，不落道 */
             }
-
-            if (ch < MCA_NCH) { hist[ch]++; binned++; }
-            else              { outrange++; }
 
             GPIO_SetBits(GPIOB, MCA_RST_PIN);      /* RSTPDH = 1 复位 */
             delay_us(MCA_RESET_US);
